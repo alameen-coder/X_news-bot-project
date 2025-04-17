@@ -88,7 +88,3 @@ def get_user_id(usernname):
                                     logging.info(f"New tweet from @{username}")
                                     last_seen[username] = tweet_id
                                     time.sleep(CHECK_INTERVAL)
-
-                                    git remote add origin https://github.com/alameen-coder/x_news_bot.git
-git branch -M main
-git push -u origin main
