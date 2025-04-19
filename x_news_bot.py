@@ -2,112 +2,108 @@ import os
 import requests
 import time
 import logging
-
 from flask import Flask
 from threading import Thread
+from dotenv import load_dotenv
 
-# === KEEP_ALIVE SERVER ===
+# === Load environment variables ===
+load_dotenv()
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
+
+# === Twitter usernames to track ===
+TWITTER_USERNAMES = [
+    "WatcherGuru", "CoinDesk", "Cointelegraph", "CryptoSlate"
+]
+
+# === Keywords to filter tweets ===
+KEYWORDS = ["crypto", "just in", "alert", "breaking", "update"]
+
+# === Polling interval (seconds) ===
+CHECK_INTERVAL = 60
+
+# === Flask keep-alive server ===
 app = Flask('')
 
 @app.route('/')
 def home():
-   return "Im alive!"
+    return "I'm alive!"
 
 def run():
-    app.run(host='0.0.0.0', port=8080)  
+    app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
-        t = Thread(target=run)
-        t.start()
-       
+    t = Thread(target=run)
+    t.start()
 
-
-from dotenv import load_dotenv
-load_dotenv()
-
-
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  
-
-TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
-TWITTER_USERNAMES = ["@WatcherGuru", "@CoinDesk", "@Cointelegraph", "@CryptoSlate", "@arkham"]                             
-KEYWORDS = ["Crypto, just in" ]                           
-CHECK_INTERVAL = 60  # Time interval in seconds to check for new tweets
-
-# === HEADERS ===
+# === Twitter API setup ===
 twitter_headers = {
     'Authorization': f'Bearer {TWITTER_BEARER_TOKEN}'
 }
 
-# === STATE ===
-last_seen = {}
+# Track last tweet IDs to avoid duplicates
+last_tweet_ids = {}
 
-# === LOGGING ===
-logging.basicConfig(level=logging.INFO)
-
-# === FUNCTIONS ===
-def get_user_id(usernname): 
-    try: 
-        url = f"https://api.twitter.com/2/users/by/username/{usernname}"
-        response = requests.get(url, headers=twitter_headers)
-        response.raise_for_status()
+# === Get user ID from Twitter username ===
+def get_user_id(username):
+    url = f"https://api.twitter.com/2/users/by/username/{username}"
+    response = requests.get(url, headers=twitter_headers)
+    if response.status_code == 200:
         return response.json()['data']['id']
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching user ID for {usernname}: {e}")
+    else:
+        logging.warning(f"Failed to get user ID for {username}")
         return None
-    
-    def get_latest_tweets(user_id):
-        try: 
-            url = f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&exclude=replies"
-            params = {
-                'max_results': 5,  # Adjust as needed
-                'tweet.fields': 'created_at,text'
-            }
-            response = requests.get(url, headers=twitter_headers, params=params)
-            response.raise_for_status()
-            tweets = response.json().get('data', [])
-            return tweets[0] if tweets else None
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error fetching tweets for user ID {user_id}: {e}")
-            return None
-        
-    def contains_keywords(text):
-        return any(keyword.lower() in text.lower() for keyword in KEYWORDS)
-    
-    def send_to_telegram(message):
-        try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-            payload = {
-                'chat_id': TELEGRAM_CHAT_ID,
-                'text': message,
-                'parse_mode': 'HTML'
-            }
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Error sending message to Telegram: {e}")
 
-            def format_message(tweet):
-                tweet_url = f"https://twitter.com/{tweet['author_id']}/status/{tweet['id']}"
-                text = tweet['text'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                return f"<b>New Tweet from @{tweet['author_id']}:</b>\n\n{text}\n\n<a href='{tweet_url}'>View on Twitter</a>"
-            
-            # === MAIN LOOP ===
-            if __name__ == "__main__":
-                user_ids = {u: get_user_id(u) for u in TWITTER_USERNAMES}
-                logging.info("Bot started successfully.")
+# === Get latest tweets from user ===
+def get_latest_tweet(user_id):
+    url = f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at"
+    response = requests.get(url, headers=twitter_headers)
+    if response.status_code == 200:
+        return response.json().get('data', [])
+    else:
+        logging.warning(f"Failed to fetch tweets for user_id {user_id}")
+        return []
 
-                while true: 
-                    for username, user_id in user_ids.items():
-                        if not user_id: 
-                            continue
-                        twee_latest_tweets(user_id)
-                        if tweet: 
-                            tweet_id = tweet['id']
-                            if last_seen.get(usernname) != tweet_id: 
-                                if contains_keywords (tweet['text']): 
-                                    message = format_message(usernname, tweet)
-                                    send_to_telegram(message)
-                                    logging.info(f"New tweet from @{username}")
-                                    last_seen[username] = tweet_id
-                                    time.sleep(CHECK_INTERVAL)
+# === Send message to Telegram ===
+def send_telegram_message(text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML"
+    }
+    requests.post(url, data=payload)
+
+# === Main bot logic ===
+def start_bot():
+    user_ids = {}
+
+    # Get Twitter user IDs
+    for username in TWITTER_USERNAMES:
+        user_id = get_user_id(username)
+        if user_id:
+            user_ids[username] = user_id
+            last_tweet_ids[user_id] = None
+
+    print("Bot started successfully. Monitoring tweets...")
+
+    while True:
+        for username, user_id in user_ids.items():
+            tweets = get_latest_tweet(user_id)
+            for tweet in tweets:
+                tweet_id = tweet['id']
+                text = tweet['text'].lower()
+                if last_tweet_ids[user_id] != tweet_id:
+                    if any(keyword.lower() in text for keyword in KEYWORDS):
+                        msg = f"<b>{username}</b> tweeted:\n\n{text}\n\nhttps://twitter.com/{username}/status/{tweet_id}"
+                        send_telegram_message(msg)
+                        print(f"Sent alert for {username}: {tweet_id}")
+                    last_tweet_ids[user_id] = tweet_id
+        time.sleep(CHECK_INTERVAL)
+
+# === Run everything ===
+if __name__ == "main":
+    keep_alive()
+    start_bot()
