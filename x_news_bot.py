@@ -7,7 +7,7 @@ TELEGRAM_BOT_TOKEN = "7709846260:AAGtFq9brzDFA3obIDx1WMVEvrtOuDx3RRU"
 TELEGRAM_CHAT_ID = "6224709482"  
 
 TWITTER_BEARER_TOKEN = "AAAAAAAAAAAAAAAAAAAAAOax0gEAAAAADPPWBv8h9yDlOGTfKJDAiELE%2FEk%3D32GWLsSpcsO2tno6XtT6I1XR5YRenxzKVp1VzGYs6zdBkLvoX1"
-TWITTER_USERNAMES = ["@WatcherGuru", "@CoinDesk"]                             
+TWITTER_USERNAMES = ["@WatcherGuru", "@CoinDesk", "@Cointelegraph", "@CryptoSlate", "@arkham"]                             
 KEYWORDS = ["Crypto, just in" ]                           
 CHECK_INTERVAL = 60  # Time interval in seconds to check for new tweets
 
