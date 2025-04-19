@@ -26,10 +26,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-TELEGRAM_BOT_TOKEN = "7709846260:AAGtFq9brzDFA3obIDx1WMVEvrtOuDx3RRU"
-TELEGRAM_CHAT_ID = "6224709482"  
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  
 
-TWITTER_BEARER_TOKEN = "AAAAAAAAAAAAAAAAAAAAAOax0gEAAAAADPPWBv8h9yDlOGTfKJDAiELE%2FEk%3D32GWLsSpcsO2tno6XtT6I1XR5YRenxzKVp1VzGYs6zdBkLvoX1"
+TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 TWITTER_USERNAMES = ["@WatcherGuru", "@CoinDesk", "@Cointelegraph", "@CryptoSlate", "@arkham"]                             
 KEYWORDS = ["Crypto, just in" ]                           
 CHECK_INTERVAL = 60  # Time interval in seconds to check for new tweets
