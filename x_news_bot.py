@@ -32,7 +32,7 @@ def home():
     return "I'm alive!"
 
 def run():
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=5500)
 
 def keep_alive():
     t = Thread(target=run)
@@ -67,14 +67,36 @@ def get_latest_tweet(user_id):
         return []
 
 # === Send message to Telegram ===
-def send_telegram_message(text):
+def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
+        "chat_id": chat_id,
         "text": text,
         "parse_mode": "HTML"
     }
     requests.post(url, data=payload)
+
+# === Telegram bot polling to handle commands ===
+def telegram_polling():
+    offset = None
+    while True:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+        params = {"timeout": 100, "offset": offset}
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            updates = response.json().get("result", [])
+            for update in updates:
+                offset = update["update_id"] + 1
+                if "message" in update:
+                    message = update["message"]
+                    chat_id = message["chat"]["id"]
+                    text = message.get("text", "")
+                    if text == "/start":
+                        welcome_msg = "Welcome to the X News Bot! I will notify you about important crypto tweets."
+                        send_telegram_message(welcome_msg, chat_id)
+        else:
+            logging.warning("Failed to get updates from Telegram")
+        time.sleep(1)
 
 # === Main bot logic ===
 def start_bot():
@@ -88,6 +110,11 @@ def start_bot():
             last_tweet_ids[user_id] = None
 
     print("Bot started successfully. Monitoring tweets...")
+
+    # Start Telegram polling in a separate thread
+    telegram_thread = Thread(target=telegram_polling)
+    telegram_thread.daemon = True
+    telegram_thread.start()
 
     while True:
         for username, user_id in user_ids.items():
@@ -104,6 +131,6 @@ def start_bot():
         time.sleep(CHECK_INTERVAL)
 
 # === Run everything ===
-if __name__ == "main":
+if __name__ == "__main__":
     keep_alive()
     start_bot()
