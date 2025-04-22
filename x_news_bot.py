@@ -159,14 +159,19 @@ def start_bot():
     while True:
         for username, user_id in user_ids.items():
             tweets = get_latest_tweet(user_id)
+            # Find the latest tweet containing any keyword
+            latest_matching_tweet = None
             for tweet in tweets:
-                tweet_id = tweet['id']
                 text = tweet['text'].lower()
+                if any(keyword.lower() in text for keyword in KEYWORDS):
+                    if (latest_matching_tweet is None) or (tweet['id'] > latest_matching_tweet['id']):
+                        latest_matching_tweet = tweet
+            if latest_matching_tweet:
+                tweet_id = latest_matching_tweet['id']
                 if last_tweet_ids[user_id] != tweet_id:
-                    if any(keyword.lower() in text for keyword in KEYWORDS):
-                        msg = f"<b>{username}</b> tweeted:\n\n{text}\n\nhttps://twitter.com/{username}/status/{tweet_id}"
-                        send_telegram_message(msg)
-                        print(f"Sent alert for {username}: {tweet_id}")
+                    msg = f"<b>{username}</b> tweeted:\n\n{latest_matching_tweet['text']}\n\nhttps://twitter.com/{username}/status/{tweet_id}"
+                    send_telegram_message(msg)
+                    print(f"Sent alert for {username}: {tweet_id}")
                     last_tweet_ids[user_id] = tweet_id
         time.sleep(CHECK_INTERVAL)
 
