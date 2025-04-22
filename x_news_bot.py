@@ -19,7 +19,7 @@ TWITTER_USERNAMES = [
 ]
 
 # === Keywords to filter tweets ===
-KEYWORDS = ["crypto", "just in", "alert", "breaking", "update"]
+KEYWORDS = ["crypto", "just in", "alert", "breaking", "update", "latest"]
 
 # === Polling interval (seconds) ===
 CHECK_INTERVAL = 60
