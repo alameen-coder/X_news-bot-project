@@ -57,16 +57,27 @@ def get_user_id(username):
         logging.warning(f"Failed to get user ID for {username}: {e}")
         return None
 
-# === Get latest tweets from user ===
-def get_latest_tweet(user_id):
-    try:
-        url = f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at"
-        response = requests.get(url, headers=twitter_headers, timeout=10)
-        response.raise_for_status()
-        return response.json().get('data', [])
-    except Exception as e:
-        logging.warning(f"Failed to fetch tweets for user_id {user_id}: {e}")
-        return []
+# === Get latest tweets from user with 429 handling ===
+def get_latest_tweet(user_id, max_retries=3):
+    retry_delay = 60  # seconds
+    retries = 0
+    while retries <= max_retries:
+        try:
+            url = f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at"
+            response = requests.get(url, headers=twitter_headers, timeout=10)
+            if response.status_code == 429:
+                logging.warning(f"Rate limit hit for user_id {user_id}. Retrying after {retry_delay} seconds.")
+                time.sleep(retry_delay)
+                retries += 1
+                retry_delay *= 2  # exponential backoff
+                continue
+            response.raise_for_status()
+            return response.json().get('data', [])
+        except Exception as e:
+            logging.warning(f"Failed to fetch tweets for user_id {user_id}: {e}")
+            return []
+    logging.warning(f"Max retries exceeded for user_id {user_id}. Skipping.")
+    return []
 
 # === Send message to Telegram ===
 def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID):
