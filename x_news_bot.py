@@ -76,6 +76,29 @@ def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID):
     }
     requests.post(url, data=payload)
 
+# === Send photo to Telegram by URL ===
+def send_telegram_photo_url(photo_url, caption, chat_id=TELEGRAM_CHAT_ID):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+    payload = {
+        "chat_id": chat_id,
+        "photo": photo_url,
+        "caption": caption,
+        "parse_mode": "HTML"
+    }
+    requests.post(url, data=payload)
+
+# === Send photo to Telegram by uploading local file ===
+def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+    with open(photo_path, "rb") as photo_file:
+        files = {"photo": photo_file}
+        data = {
+            "chat_id": chat_id,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+        requests.post(url, files=files, data=data)
+
 # === Telegram bot polling to handle commands ===
 def telegram_polling():
     offset = None
@@ -93,7 +116,12 @@ def telegram_polling():
                     text = message.get("text", "")
                     if text == "/start":
                         welcome_msg = "Welcome to the X News Bot! I will notify you about important crypto tweets."
-                        send_telegram_message(welcome_msg, chat_id)
+                        # Example: send photo by URL
+                        # photo_url = "https://example.com/welcome.jpg"
+                        # send_telegram_photo_url(photo_url, welcome_msg, chat_id)
+                        # Example: send photo by uploading local file
+                        photo_path = "welcome.jpg"  # Replace with your local image file path
+                        send_telegram_photo_file(photo_path, welcome_msg, chat_id)
         else:
             logging.warning("Failed to get updates from Telegram")
         time.sleep(1)
