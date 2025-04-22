@@ -48,65 +48,80 @@ last_tweet_ids = {}
 
 # === Get user ID from Twitter username ===
 def get_user_id(username):
-    url = f"https://api.twitter.com/2/users/by/username/{username}"
-    response = requests.get(url, headers=twitter_headers)
-    if response.status_code == 200:
+    try:
+        url = f"https://api.twitter.com/2/users/by/username/{username}"
+        response = requests.get(url, headers=twitter_headers, timeout=10)
+        response.raise_for_status()
         return response.json()['data']['id']
-    else:
-        logging.warning(f"Failed to get user ID for {username}")
+    except Exception as e:
+        logging.warning(f"Failed to get user ID for {username}: {e}")
         return None
 
 # === Get latest tweets from user ===
 def get_latest_tweet(user_id):
-    url = f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at"
-    response = requests.get(url, headers=twitter_headers)
-    if response.status_code == 200:
+    try:
+        url = f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at"
+        response = requests.get(url, headers=twitter_headers, timeout=10)
+        response.raise_for_status()
         return response.json().get('data', [])
-    else:
-        logging.warning(f"Failed to fetch tweets for user_id {user_id}")
+    except Exception as e:
+        logging.warning(f"Failed to fetch tweets for user_id {user_id}: {e}")
         return []
 
 # === Send message to Telegram ===
 def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
-    }
-    requests.post(url, data=payload)
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML"
+        }
+        response = requests.post(url, data=payload, timeout=10)
+        response.raise_for_status()
+    except Exception as e:
+        logging.warning(f"Failed to send Telegram message: {e}")
 
 # === Send photo to Telegram by URL ===
 def send_telegram_photo_url(photo_url, caption, chat_id=TELEGRAM_CHAT_ID):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-    payload = {
-        "chat_id": chat_id,
-        "photo": photo_url,
-        "caption": caption,
-        "parse_mode": "HTML"
-    }
-    requests.post(url, data=payload)
-
-# === Send photo to Telegram by uploading local file ===
-def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-    with open(photo_path, "rb") as photo_file:
-        files = {"photo": photo_file}
-        data = {
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        payload = {
             "chat_id": chat_id,
+            "photo": photo_url,
             "caption": caption,
             "parse_mode": "HTML"
         }
-        requests.post(url, files=files, data=data)
+        response = requests.post(url, data=payload, timeout=10)
+        response.raise_for_status()
+    except Exception as e:
+        logging.warning(f"Failed to send Telegram photo by URL: {e}")
+
+# === Send photo to Telegram by uploading local file ===
+def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        with open(photo_path, "rb") as photo_file:
+            files = {"photo": photo_file}
+            data = {
+                "chat_id": chat_id,
+                "caption": caption,
+                "parse_mode": "HTML"
+            }
+            response = requests.post(url, files=files, data=data, timeout=10)
+            response.raise_for_status()
+    except Exception as e:
+        logging.warning(f"Failed to send Telegram photo by file: {e}")
 
 # === Telegram bot polling to handle commands ===
 def telegram_polling():
     offset = None
     while True:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
-        params = {"timeout": 100, "offset": offset}
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
+        try:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+            params = {"timeout": 100, "offset": offset}
+            response = requests.get(url, params=params, timeout=110)
+            response.raise_for_status()
             updates = response.json().get("result", [])
             for update in updates:
                 offset = update["update_id"] + 1
@@ -116,14 +131,11 @@ def telegram_polling():
                     text = message.get("text", "")
                     if text == "/start":
                         welcome_msg = "Welcome to the X News Bot! I will notify you about important crypto tweets."
-                        # Example: send photo by URL
-                        # photo_url = "https://example.com/welcome.jpg"
-                        # send_telegram_photo_url(photo_url, welcome_msg, chat_id)
-                        # Example: send photo by uploading local file
                         photo_path = "welcome.jpg"  # Replace with your local image file path
                         send_telegram_photo_file(photo_path, welcome_msg, chat_id)
-        else:
-            logging.warning("Failed to get updates from Telegram")
+        except Exception as e:
+            logging.warning(f"Error in telegram_polling: {e}")
+            time.sleep(5)
         time.sleep(1)
 
 # === Main bot logic ===
