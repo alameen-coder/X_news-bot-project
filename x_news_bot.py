@@ -15,7 +15,7 @@ TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
 # === Twitter usernames to track ===
 TWITTER_USERNAMES = [
-    "WatcherGuru", "CoinDesk", "Cointelegraph", "CryptoSlate"
+    "WatcherGuru", "CoinDesk", "Cointelegraph", "CryptoSlate", "Cointelegraph"
 ]
 
 # === Keywords to filter tweets ===
