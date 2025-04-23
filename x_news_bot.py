@@ -2,9 +2,11 @@ import os
 import requests
 import time
 import logging
+import re
 from flask import Flask
 from threading import Thread
 from dotenv import load_dotenv
+import json
 
 # === Load environment variables ===
 load_dotenv()
@@ -15,11 +17,14 @@ TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
 # === Twitter usernames to track ===
 TWITTER_USERNAMES = [
-    "WatcherGuru", "CoinDesk", "Cointelegraph", "CryptoSlate", "Cointelegraph"
+    "WatcherGuru", "CoinDesk", "Cointelegraph", "CryptoSlate"
 ]
 
 # === Keywords to filter tweets ===
-KEYWORDS = ["crypto", "just in", "alert", "breaking", "update", "latest"]
+KEYWORDS = ["crypto", "just in", "alert", "breaking", "update"]
+
+# Compile regex pattern for keywords with word boundaries for precise matching
+KEYWORD_PATTERN = re.compile(r'\b(' + '|'.join(re.escape(k) for k in KEYWORDS) + r')\b', re.IGNORECASE)
 
 # === Polling interval (seconds) ===
 CHECK_INTERVAL = 60
@@ -80,7 +85,7 @@ def get_latest_tweet(user_id, max_retries=3):
     return []
 
 # === Send message to Telegram ===
-def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID):
+def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID, reply_markup=None):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
@@ -88,6 +93,8 @@ def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID):
             "text": text,
             "parse_mode": "HTML"
         }
+        if reply_markup:
+            payload["reply_markup"] = json.dumps(reply_markup)
         response = requests.post(url, data=payload, timeout=10)
         response.raise_for_status()
     except Exception as e:
@@ -124,6 +131,22 @@ def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
     except Exception as e:
         logging.warning(f"Failed to send Telegram photo by file: {e}")
 
+# === Send welcome message with options ===
+def send_welcome_with_options(chat_id):
+    welcome_msg = "Welcome to the X News Bot! I will notify you about important crypto tweets. Please choose an option:"
+    photo_path = "welcome.jpg"  # Replace with your local image file path
+    send_telegram_photo_file(photo_path, welcome_msg, chat_id)
+
+    options = {
+        "keyboard": [
+            ["/latest", "/help"],
+            ["/stop"]
+        ],
+        "one_time_keyboard": True,
+        "resize_keyboard": True
+    }
+    send_telegram_message("Select an option:", chat_id, reply_markup=options)
+
 # === Telegram bot polling to handle commands ===
 def telegram_polling():
     offset = None
@@ -139,11 +162,10 @@ def telegram_polling():
                 if "message" in update:
                     message = update["message"]
                     chat_id = message["chat"]["id"]
-                    text = message.get("text", "")
-                    if text == "/start":
-                        welcome_msg = "Welcome to the X News Bot! I will notify you about important crypto tweets."
-                        photo_path = "welcome.jpg"  # Replace with your local image file path
-                        send_telegram_photo_file(photo_path, welcome_msg, chat_id)
+                    text = message.get("text", "").lower()
+                    if "start" in text:
+                        send_welcome_with_options(chat_id)
+                    # Additional command handling can be added here
         except Exception as e:
             logging.warning(f"Error in telegram_polling: {e}")
             time.sleep(5)
@@ -173,8 +195,8 @@ def start_bot():
             # Find the latest tweet containing any keyword
             latest_matching_tweet = None
             for tweet in tweets:
-                text = tweet['text'].lower()
-                if any(keyword.lower() in text for keyword in KEYWORDS):
+                text = tweet['text']
+                if KEYWORD_PATTERN.search(text):
                     if (latest_matching_tweet is None) or (tweet['id'] > latest_matching_tweet['id']):
                         latest_matching_tweet = tweet
             if latest_matching_tweet:
