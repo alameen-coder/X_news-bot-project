@@ -41,6 +41,7 @@ def run():
 
 def keep_alive():
     t = Thread(target=run)
+    t.daemon = True
     t.start()
 
 # === Twitter API setup ===
@@ -100,21 +101,6 @@ def send_telegram_message(text, chat_id=TELEGRAM_CHAT_ID, reply_markup=None):
     except Exception as e:
         logging.warning(f"Failed to send Telegram message: {e}")
 
-# === Send photo to Telegram by URL ===
-def send_telegram_photo_url(photo_url, caption, chat_id=TELEGRAM_CHAT_ID):
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-        payload = {
-            "chat_id": chat_id,
-            "photo": photo_url,
-            "caption": caption,
-            "parse_mode": "HTML"
-        }
-        response = requests.post(url, data=payload, timeout=10)
-        response.raise_for_status()
-    except Exception as e:
-        logging.warning(f"Failed to send Telegram photo by URL: {e}")
-
 # === Send photo to Telegram by uploading local file ===
 def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
     try:
@@ -131,13 +117,17 @@ def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
     except Exception as e:
         logging.warning(f"Failed to send Telegram photo by file: {e}")
 
-# === Send welcome message with options ===
-def send_welcome_with_options(chat_id):
+# === Send welcome message ===
+def send_welcome_message(chat_id):
     welcome_msg = "Welcome to the X News Bot! I will notify you about all important crypto news for you to stay positioned."
-    photo_path = "welcome.jpg"  # Replace with your local image file path
-    send_telegram_photo_file(photo_path, welcome_msg, chat_id)
-
-    send_telegram_message("Select an option:", chat_id)
+    photo_path = "welcome.jpg"  # Replace with your local image file path if needed
+    # Send photo first, ignore errors
+    try:
+        send_telegram_photo_file(photo_path, welcome_msg, chat_id)
+    except Exception:
+        pass
+    # Send welcome text message
+    send_telegram_message(welcome_msg, chat_id)
 
 # === Telegram bot polling to handle commands ===
 def telegram_polling():
@@ -154,9 +144,9 @@ def telegram_polling():
                 if "message" in update:
                     message = update["message"]
                     chat_id = message["chat"]["id"]
-                    text = message.get("text", "").lower()
-                    if "start" in text:
-                        send_welcome_with_options(chat_id)
+                    text = message.get("text", "").strip().lower()
+                    if text == "/start":
+                        send_welcome_message(chat_id)
                     # Additional command handling can be added here
         except Exception as e:
             logging.warning(f"Error in telegram_polling: {e}")
