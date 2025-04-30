@@ -137,15 +137,7 @@ def send_welcome_with_options(chat_id):
     photo_path = "welcome.jpg"  # Replace with your local image file path
     send_telegram_photo_file(photo_path, welcome_msg, chat_id)
 
-    options = {
-        "keyboard": [
-            ["/latest", "/help"],
-            ["/stop"]
-        ],
-        "one_time_keyboard": True,
-        "resize_keyboard": True
-    }
-    send_telegram_message("Select an option:", chat_id, reply_markup=options)
+    send_telegram_message("Select an option:", chat_id)
 
 # === Telegram bot polling to handle commands ===
 def telegram_polling():
