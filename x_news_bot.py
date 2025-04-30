@@ -133,7 +133,7 @@ def send_telegram_photo_file(photo_path, caption, chat_id=TELEGRAM_CHAT_ID):
 
 # === Send welcome message with options ===
 def send_welcome_with_options(chat_id):
-    welcome_msg = "Welcome to the X News Bot! I will notify you about important crypto tweets. Please choose an option:"
+    welcome_msg = "Welcome to the X News Bot! I will notify you about all important crypto news for you to stay positioned."
     photo_path = "welcome.jpg"  # Replace with your local image file path
     send_telegram_photo_file(photo_path, welcome_msg, chat_id)
 
