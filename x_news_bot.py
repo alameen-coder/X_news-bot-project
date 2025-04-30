@@ -124,10 +124,10 @@ def send_welcome_message(chat_id):
     # Send photo first, ignore errors
     try:
         send_telegram_photo_file(photo_path, welcome_msg, chat_id)
-    except Exception:
-        pass
-    # Send welcome text message
-    send_telegram_message(welcome_msg, chat_id)
+    except Exception as e:
+        logging.warning(f"Failed to send welcome photo: {e}")
+    # Send welcome text message without any keyboard or buttons
+    send_telegram_message(welcome_msg, chat_id, reply_markup=None)
 
 # === Telegram bot polling to handle commands ===
 def telegram_polling():
