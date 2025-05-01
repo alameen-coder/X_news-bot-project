@@ -21,7 +21,12 @@ TWITTER_USERNAMES = [
 ]
 
 # === Keywords to filter tweets ===
-KEYWORDS = ["crypto", "just in", "alert", "breaking", "update"]
+KEYWORDS = [ "crypto", "just in", "alert", "breaking", "update", "bitcoin", "ethereum",
+    "solana", "xrp", "bnb", "sui"
+    "altcoin", "blockchain", "news", "market", "trading", "analysis", "report",
+    "bullish", "bearish", "bull", "bear", "dip", "pump", "dump", "moon",
+    "dump", "hodl", "FOMO", "FUD", "FOMO", "FUD", "bull run", "bear market",
+    "bull trap"]
 
 # Compile regex pattern for keywords with word boundaries for precise matching
 KEYWORD_PATTERN = re.compile(r'\b(' + '|'.join(re.escape(k) for k in KEYWORDS) + r')\b', re.IGNORECASE)
