@@ -22,7 +22,7 @@ TWITTER_USERNAMES = [
 
 # === Keywords to filter tweets ===
 KEYWORDS = [ "crypto", "just in", "alert", "breaking", "update", "bitcoin", "ethereum",
-    "solana", "xrp", "bnb", "sui"
+    "solana", "xrp", "bnb", "sui",
     "altcoin", "blockchain", "news", "market", "trading", "analysis", "report",
     "bullish", "bearish", "bull", "bear", "dip", "pump", "dump", "moon",
     "dump", "hodl", "FOMO", "FUD", "FOMO", "FUD", "bull run", "bear market",
@@ -62,6 +62,9 @@ def get_user_id(username):
     try:
         url = f"https://api.twitter.com/2/users/by/username/{username}"
         response = requests.get(url, headers=twitter_headers, timeout=10)
+        if response.status_code == 429:
+            logging.warning(f"Rate limit hit while getting user ID for {username}.")
+            return None
         response.raise_for_status()
         return response.json()['data']['id']
     except Exception as e:
@@ -168,6 +171,8 @@ def start_bot():
         if user_id:
             user_ids[username] = user_id
             last_tweet_ids[user_id] = None
+        else:
+            logging.warning(f"Skipping username {username} due to missing user ID.")
 
     print("Bot started successfully. Monitoring tweets...")
 
@@ -193,9 +198,11 @@ def start_bot():
                     send_telegram_message(msg)
                     print(f"Sent alert for {username}: {tweet_id}")
                     last_tweet_ids[user_id] = tweet_id
+            time.sleep(1)  # small delay between user requests to reduce rate limit hits
         time.sleep(CHECK_INTERVAL)
 
 # === Run everything ===
 if __name__ == "__main__":
     keep_alive()
+    # Note: Consider persisting last_tweet_ids to avoid missing tweets on restart
     start_bot()
